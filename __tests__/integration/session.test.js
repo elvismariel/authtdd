@@ -1,5 +1,10 @@
-/*
-describe("Authentication", () => {
+const request = require("supertest");
+const app = require("../../src/app");
+const truncate = require("../utils/truncate");
+
+const factory = require("../factories");
+
+describe("MathTest", () => {
     it("shold sum two numbers", () => {
         const x = 2;
         const y = 4;
@@ -8,30 +13,20 @@ describe("Authentication", () => {
         expect(sum).toBe(6);
     });
 });
-*/
-/*
-const { User } = require("../../src/app/models");
 
 describe("Authentication", () => {
+    beforeEach(async () => {
+        await truncate();
+    });
 
-    it("should sum two numbers", async () => {
-
-        const user = await User.create({
-            name: "Elvis", 
-            email: "elvis@elvis.com", 
-            password_hash: "1f2s31f3s12d1f23a3"
+    it("should compare user name", async () => {
+        const user = await factory.create("User", {
+            name: "Elvis"
         });
-
+        
         expect(user.name).toBe("Elvis");
     });
 });
-*/
-
-const request = require("supertest");
-const app = require("../../src/app");
-
-const { User } = require("../../src/app/models");
-const truncate = require("../utils/truncate");
 
 describe("Authentication", () => {
     beforeEach(async () => {
@@ -39,10 +34,8 @@ describe("Authentication", () => {
     });
 
     it("should authenticate with valid credential", async () => {
-        const user = await User.create({
-            name: "Elvis", 
-            email: "elvis@elvis.com", 
-            password: "1f2s31f3s12d1f23a3"
+        const user = await factory.create("User", {
+            password: "123456"
         });
 
         const response = await request(app)
@@ -53,5 +46,66 @@ describe("Authentication", () => {
         });
 
         expect(response.status).toBe(200);
-    })
+    });
+
+    it("should not authenticate with invalid credentials", async () => {
+        const user = await factory.create("User", {
+            password: "123456"
+        });
+
+        const response = await request(app)
+        .post("/sessions")
+        .send({
+            email: user.email,
+            password: "887877"
+        });
+
+        expect(response.status).toBe(401);
+    });
+
+    it("should return JWT token when authenticated", async () => {
+        const user = await factory.create("User", {
+            password: "123123"
+        });
+
+        const response = await request(app)
+        .post("/sessions")
+        .send({
+            email: user.email,
+            password: "123123"
+        });
+
+        expect(response.body).toHaveProperty("token");
+    });
+
+    it("should be able to access private routes when authenticated", async () => {
+        const user = await factory.create("User", {
+            password: "123123"
+        });
+
+        const response = await request(app)
+        .get("/dashboard")
+        .set("Authorization", `Bearer ${user.generateToken()}`);
+        
+        expect(response.status).toBe(200);
+    });
+
+    it("should not be able to access private routes without jwt token", async () => {
+        const user = await factory.create("User", {
+            password: "123123123"
+        });
+
+        const response = await request(app)
+        .get("/dashboard")
+                
+        expect(response.status).toBe(401);
+    });
+
+    it("should not be able to access private routes with invalid jwt token", async () => {
+        const response = await request(app)
+        .get("/dashboard")
+        .set("Authorization", `Bearer 123123`);
+        
+        expect(response.status).toBe(401);
+    });
 });

@@ -1,4 +1,4 @@
-const { bcrypt } = require("bcryptjs");
+const bcrypt = require("bcryptjs");
 
 const { User } = require("../../src/app/models");
 const truncate = require("../utils/truncate");
